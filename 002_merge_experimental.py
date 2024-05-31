@@ -1,3 +1,5 @@
+#Merge script 002
+
 import os
 import pandas as pd
 import logging
@@ -99,3 +101,5 @@ verify_merge(merged_data, dataframes2)
 output_path = '/home/max/Desktop/Hiwi_Job/BON_LTE_160524_HUE_002/BON_LTE_160524_HUE_002_unified_final.csv'
 merged_data.to_csv(output_path, index=False)
 logging.info(f"Final merged data saved to '{output_path}'")
+
+
