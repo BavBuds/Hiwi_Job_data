@@ -1,70 +1,106 @@
+#Merge script 002
+
 import os
 import pandas as pd
-import gc
 import logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Initialize logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def load_csv_files(directory_path, exclude_file):
-    dataframes = {}
-    try:
-        for filename in os.listdir(directory_path):
-            if filename.endswith('.csv') and filename != exclude_file:
-                file_path = os.path.join(directory_path, filename)
-                dataframes[filename] = pd.read_csv(file_path)
-                logging.info(f"Loaded {filename} with shape {dataframes[filename].shape}")
-    except Exception as e:
-        logging.error(f"Error loading CSV files: {e}")
-    return dataframes
+# Path to the directory containing the CSV files
+directory_path2 = '/home/max/Desktop/Hiwi_Job/BON_LTE_160524_HUE_002'
+dataframes2 = {}
 
-def print_column_names(dataframes):
-    for filename, df in dataframes.items():
-        logging.info(f"Column names for {filename}: {df.columns.tolist()}")
+# Load all CSV files into a dictionary of DataFrames
+for filename in os.listdir(directory_path2):
+    if filename.endswith('.csv'):
+        file_path = os.path.join(directory_path2, filename)
+        dataframes2[filename] = pd.read_csv(file_path, low_memory=False)
+        logging.info(f"Loaded {filename} with columns: {dataframes2[filename].columns.tolist()}")
 
-def merge_dataframes(base_df, dataframes, base_df_name):
-    merged_df = base_df
-    logging.info(f"Starting with base dataframe: {base_df_name}")
 
-    remaining_dfs = dataframes.copy()
-    merged_any = True
+def find_common_columns(df1, df2):
+    """Find common columns between two DataFrames."""
+    return list(set(df1.columns).intersection(set(df2.columns)))
 
-    while remaining_dfs and merged_any:
-        merged_any = False
-        for filename, df in list(remaining_dfs.items()):
-            common_columns = merged_df.columns.intersection(df.columns).tolist()
-            if common_columns:
-                logging.info(f"Merging {base_df_name} with {filename} on columns: {common_columns}")
-                merged_df = pd.merge(merged_df, df, on=common_columns, how='left')
-                logging.info(f"Shape after merging: {merged_df.shape}")
-                remaining_dfs.pop(filename)
-                merged_any = True
-                gc.collect()
+
+def coerce_column_types(df1, df2, columns):
+    """Coerce column types to be the same for merging."""
+    for column in columns:
+        if df1[column].dtype != df2[column].dtype:
+            if pd.api.types.is_numeric_dtype(df1[column]) and pd.api.types.is_numeric_dtype(df2[column]):
+                df1[column] = df1[column].astype(float)
+                df2[column] = df2[column].astype(float)
             else:
-                logging.info(f"No common columns found between {base_df_name} and {filename}, skipping merge for now.")
+                df1[column] = df1[column].astype(str)
+                df2[column] = df2[column].astype(str)
 
-    for filename, df in remaining_dfs.items():
-        logging.info(f"Could not merge {filename} as there are no common columns even after all attempts.")
+
+def merge_dataframes(dataframes, start_key):
+    """Merge all DataFrames iteratively based on the most common columns."""
+    merged_df = dataframes.pop(start_key)
+    logging.info(f"Starting merge with {start_key}")
+
+    while dataframes:
+        best_match_key = None
+        best_common_columns = []
+        for key, df in dataframes.items():
+            common_columns = find_common_columns(merged_df, df)
+            if len(common_columns) > len(best_common_columns):
+                best_match_key = key
+                best_common_columns = common_columns
+        if not best_common_columns:
+            raise ValueError("No common columns found for merging.")
+
+        logging.info(f"Merging with {best_match_key} on columns: {best_common_columns}")
+
+        # Ensure column types match for merging
+        coerce_column_types(merged_df, dataframes[best_match_key], best_common_columns)
+
+        merged_df = pd.merge(merged_df, dataframes.pop(best_match_key), on=best_common_columns, how='outer')
 
     return merged_df
 
-def main(directory_path, base_filename, output_directory, exclude_file):
-    dataframes = load_csv_files(directory_path, exclude_file)
-    print_column_names(dataframes)
 
-    base_df = dataframes.pop(base_filename)
-    merged_df = merge_dataframes(base_df, dataframes, base_filename)
+def verify_merge(merged_df, original_dfs):
+    """Verify if the merged DataFrame contains all unique columns from the original DataFrames."""
+    # Collect all unique columns from original DataFrames
+    unique_columns = set()
+    for df in original_dfs.values():
+        unique_columns.update(df.columns)
 
-    output_path = os.path.join(output_directory, 'merged_data.csv')
-    try:
-        merged_df.to_csv(output_path, index=False)
-        logging.info(f"Final merged dataframe saved to {output_path}")
-    except Exception as e:
-        logging.error(f"Error saving merged dataframe: {e}")
+    # Check for missing columns
+    missing_columns = unique_columns - set(merged_df.columns)
+    if missing_columns:
+        logging.warning(f"Missing columns in the final merged dataset: {missing_columns}")
+    else:
+        logging.info("All unique columns are present in the final merged dataset.")
 
-if __name__ == "__main__":
-    input_directory = '/home/max/PycharmProjects/Hiwi_Job/BON_LTE_160524_HUE_002'
-    base_filename = 'lte_seehausen.ID_L0204_V1_0_ERTRAG.csv'
-    output_directory = '/home/max/Desktop/Hiwi_Job/BON_LTE_160524_HUE_002'
-    exclude_file = 'lte_seehausen.ID_L020099_V1_0_PFLANZENLABORWERTE.csv'
-    main(input_directory, base_filename, output_directory, exclude_file)
+    # Optionally, perform a sample data check (e.g., first row from each original DataFrame)
+    for key, original_df in original_dfs.items():
+        sample_row = original_df.iloc[0]
+        for column in sample_row.index:
+            if column in merged_df.columns:
+                merged_values = merged_df.loc[merged_df[column] == sample_row[column], column]
+                if not merged_values.empty and all(merged_values == sample_row[column]):
+                    logging.info(f"Column {column} from {key} is correctly merged.")
+                else:
+                    logging.warning(f"Discrepancy found in column {column} from {key}.")
+            else:
+                logging.warning(f"Column {column} from {key} is missing in the merged dataset.")
+
+
+# Start the merging process with 'Ertrag' DataFrame
+start_key = 'lte_seehausen.ID_L0204_V1_0_ERTRAG.csv'
+merged_data = merge_dataframes(dataframes2, start_key)
+
+# Verify the merge
+verify_merge(merged_data, dataframes2)
+
+# Save the final merged DataFrame to a specified path
+output_path = '/home/max/Desktop/Hiwi_Job/BON_LTE_160524_HUE_002/BON_LTE_160524_HUE_002_unified_final.csv'
+merged_data.to_csv(output_path, index=False)
+logging.info(f"Final merged data saved to '{output_path}'")
+
+
+
