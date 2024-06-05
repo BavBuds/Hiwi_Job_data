@@ -1,34 +1,26 @@
 import os
 import pandas as pd
 import logging
+from collections import defaultdict
 
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 def main():
-    # Prompt user for input path
-    input_path = input("Please enter the input directory path: ")
-
-    if not os.path.isdir(input_path):
-        logging.error("The provided path is not a valid directory.")
-        return
-
-    # Extract directory name for output folder creation
-    input_dir_name = os.path.basename(os.path.normpath(input_path))
-    output_dir = os.path.join(input_path, f"{input_dir_name}_result")
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f"{input_dir_name}_unified.csv")
-
-    dataframes = {}
-
-    # Load all CSV files into a dictionary of DataFrames
-    for filename in os.listdir(input_path):
-        if filename.endswith('.csv'):
-            file_path = os.path.join(input_path, filename)
-            dataframes[filename] = pd.read_csv(file_path, low_memory=False)
-            logging.info(f"Loaded {filename} with columns: {dataframes[filename].columns.tolist()}")
-            print(f"\nDataFrame loaded from {filename}:")
-            print(dataframes[filename].head())
+    def load_dataframes(directory):
+        dataframes = {}
+        for filename in os.listdir(directory):
+            if filename.endswith('.csv'):
+                file_path = os.path.join(directory, filename)
+                try:
+                    dataframes[filename] = pd.read_csv(file_path, low_memory=False)
+                    logging.info(f"Loaded {filename} with columns: {dataframes[filename].columns.tolist()}")
+                    print(f"\nDataFrame loaded from {filename}:")
+                    print(dataframes[filename].head())
+                except Exception as e:
+                    logging.error(f"Failed to load {filename}: {e}")
+        return dataframes
 
     def find_common_columns(df1, df2):
         """Find common columns between two DataFrames."""
@@ -49,6 +41,7 @@ def main():
         """Perform precheck on the datasets to assess their quality and suitability for merging."""
         quality_issues = []
         overall_common_columns = set()
+        columns_to_remove = set()
 
         for key, df in dataframes.items():
             # Check for missing values
@@ -60,8 +53,10 @@ def main():
                 quality_issues.append(f"{key} contains rows with all NaN values.")
 
             # Check for columns that only contain NaNs
-            if df.isna().all().any():
-                quality_issues.append(f"{key} contains columns with all NaN values.")
+            nan_columns = df.columns[df.isna().all()]
+            if not nan_columns.empty:
+                columns_to_remove.update(nan_columns)
+                quality_issues.append(f"{key} contains columns with all NaN values: {nan_columns.tolist()}")
 
         # Check for at least one common column across datasets
         keys = list(dataframes.keys())
@@ -78,10 +73,25 @@ def main():
         if quality_issues:
             for issue in quality_issues:
                 logging.warning(issue)
-            return False, quality_issues
+            return False, quality_issues, columns_to_remove
         else:
             logging.info("All datasets passed the quality check.")
-            return True, []
+            return True, [], columns_to_remove
+
+    def rank_dataframes_by_common_columns(dataframes):
+        """Rank dataframes based on the number of common columns with other dataframes."""
+        common_columns_count = defaultdict(int)
+        keys = list(dataframes.keys())
+
+        for i in range(len(keys)):
+            for j in range(i + 1, len(keys)):
+                df1, df2 = dataframes[keys[i]], dataframes[keys[j]]
+                common_columns = find_common_columns(df1, df2)
+                common_columns_count[keys[i]] += len(common_columns)
+                common_columns_count[keys[j]] += len(common_columns)
+
+        ranked_dataframes = sorted(common_columns_count.items(), key=lambda item: item[1], reverse=True)
+        return ranked_dataframes
 
     def merge_dataframes(dataframes, start_key):
         """Merge all DataFrames iteratively based on the most common columns."""
@@ -101,8 +111,15 @@ def main():
 
             logging.info(f"Merging with {best_match_key} on columns: {best_common_columns}")
 
+            # Coerce column types
             coerce_column_types(merged_df, dataframes[best_match_key], best_common_columns)
-            merged_df = pd.merge(merged_df, dataframes.pop(best_match_key), on=best_common_columns, how='left')
+
+            # Perform the merge
+            try:
+                merged_df = pd.merge(merged_df, dataframes.pop(best_match_key), on=best_common_columns, how='left')
+            except MemoryError as e:
+                logging.error(f"MemoryError during merge: {e}")
+                return None
 
         return merged_df
 
@@ -148,19 +165,64 @@ def main():
         else:
             print("No columns with all NaN values found.")
 
+    input_path = input("Please enter the input directory path: ")
+
+    if not os.path.isdir(input_path):
+        logging.error("The provided path is not a valid directory.")
+        return
+
+    # Extract directory name for output folder creation
+    input_dir_name = os.path.basename(os.path.normpath(input_path))
+    output_dir = os.path.join(input_path, f"{input_dir_name}_result")
+    os.makedirs(output_dir, exist_ok=True)
+    output_file = os.path.join(output_dir, f"{input_dir_name}_unified.csv")
+
+    dataframes = load_dataframes(input_path)
+
     # Perform the quality check
-    quality_passed, issues = check_dataset_quality(dataframes)
+    quality_passed, issues, columns_to_remove = check_dataset_quality(dataframes)
+    if not quality_passed:
+        # Print information about columns with all NaN values in each dataframe
+        if columns_to_remove:
+            print("The following columns contain only NaN values:")
+            for column in columns_to_remove:
+                print(column)
+                for df_name, df in dataframes.items():
+                    if column in df.columns:
+                        print(f"{column} is present in {df_name}")
+
+            # Prompt user to decide whether to delete columns with all NaN values
+            remove_columns = input(
+                "Would you like to delete these columns and reload the data? (yes/no): ").strip().lower()
+            if remove_columns == 'yes':
+                # Remove columns with all NaN values and reload dataframes
+                for df_name, df in dataframes.items():
+                    df.drop(columns=[col for col in columns_to_remove if col in df.columns], inplace=True)
+                # Save the cleaned dataframes
+                for df_name, df in dataframes.items():
+                    df.to_csv(os.path.join(input_path, df_name), index=False)
+                # Reload dataframes
+                dataframes = load_dataframes(input_path)
+                quality_passed, issues, columns_to_remove = check_dataset_quality(dataframes)
+
     if quality_passed:
+        # Rank dataframes by the number of common columns with other dataframes
+        ranked_dataframes = rank_dataframes_by_common_columns(dataframes)
+
         # Prompt user to select the starting dataframe
-        print("\nDataFrames available for merging:")
-        for i, key in enumerate(dataframes.keys()):
-            print(f"{i + 1}. {key}")
+        print("\nDataFrames available for merging (ranked by common columns with others):")
+        for i, (key, count) in enumerate(ranked_dataframes):
+            print(f"{i + 1}. {key} (common columns: {count})")
 
         start_index = int(input("\nPlease choose the starting DataFrame by entering the corresponding number: ")) - 1
-        start_key = list(dataframes.keys())[start_index]
+        start_key = ranked_dataframes[start_index][0]
 
         # Start the merging process with the selected DataFrame
         merged_data = merge_dataframes(dataframes, start_key)
+
+        if merged_data is None:
+            logging.error("Merging failed due to memory error.")
+            return
 
         # Check for rows and columns that only contain NaN values
         check_nan_rows_columns(merged_data)
@@ -175,6 +237,7 @@ def main():
         logging.error("Datasets failed the quality check. Please address the following issues:")
         for issue in issues:
             logging.error(issue)
+
 
 if __name__ == "__main__":
     main()
