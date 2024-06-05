@@ -4,7 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c7304c48-7811-42bf-ae4c-93a4fda5c638" name="Changes" comment="Update1" />
+    <list default="true" id="c7304c48-7811-42bf-ae4c-93a4fda5c638" name="Changes" comment="Update1">
+      <change afterPath="$PROJECT_DIR$/BON_LUH_22052024_BOE_004_merge.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Merge_script_experimental.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/txt_to_csv.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BON_LTE_160524_HUE_002_merge.py" beforeDir="false" afterPath="$PROJECT_DIR$/BON_LTE_160524_HUE_002_merge.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Merge_script_dummy.py" beforeDir="false" afterPath="$PROJECT_DIR$/Merge_script_dummy.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -28,7 +35,7 @@
 }</component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/BavBuds/Hiwi_Job_data.git&quot;,
+    &quot;url&quot;: &quot;git@github.com:BavBuds/Hiwi_Job_data.git&quot;,
     &quot;accountId&quot;: &quot;ba165d54-220b-4c9d-b2ed-0859c8ccfeda&quot;
   }
 }</component>
@@ -41,17 +48,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.002_merge_experimental.executor&quot;: &quot;Run&quot;,
-    &quot;Python.BON_LTE_160524_HUE_002_merge.executor&quot;: &quot;Run&quot;,
-    &quot;Python.CSV_merge.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/max/PycharmProjects/Hiwi_Job&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.002_merge_experimental.executor": "Run",
+    "Python.BON_LTE_160524_HUE_002_merge.executor": "Run",
+    "Python.CSV_merge.executor": "Run",
+    "Python.Merge_script_dummy.executor": "Run",
+    "Python.Merge_script_experimental.executor": "Run",
+    "Python.txt_to_csv.executor": "Run",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "/home/max/PycharmProjects/Hiwi_Job"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
@@ -60,7 +70,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-babbdf50b680-746f403e7f0c-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-241.15989.155" />
+        <option value="bundled-python-sdk-48aec45f0201-746f403e7f0c-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-241.17011.127" />
       </set>
     </attachedChunks>
   </component>
@@ -113,7 +123,15 @@
       <option name="project" value="LOCAL" />
       <updated>1717174024538</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Update1">
+      <option name="closed" value="true" />
+      <created>1717176305775</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1717176305775</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
