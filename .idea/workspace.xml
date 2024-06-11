@@ -44,20 +44,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.002_merge_experimental.executor": "Run",
-    "Python.BON_LTE_160524_HUE_002_merge.executor": "Run",
-    "Python.CSV_merge.executor": "Run",
-    "Python.Merge_script_dummy.executor": "Run",
-    "Python.Merge_script_experimental.executor": "Run",
-    "Python.txt_to_csv.executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "/home/max/PycharmProjects/Hiwi_Job"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.002_merge_experimental.executor&quot;: &quot;Run&quot;,
+    &quot;Python.BON_LTE_160524_HUE_002_merge.executor&quot;: &quot;Run&quot;,
+    &quot;Python.CSV_merge.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Merge_script_dummy.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Merge_script_experimental.executor&quot;: &quot;Run&quot;,
+    &quot;Python.txt_to_csv.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/max/PycharmProjects/Hiwi_Job&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
@@ -135,7 +135,15 @@
       <option name="project" value="LOCAL" />
       <updated>1717581270194</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="Update1">
+      <option name="closed" value="true" />
+      <created>1717584689684</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1717584689684</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">

@@ -6,7 +6,6 @@ from collections import defaultdict
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
 def main():
     def load_dataframes(directory):
         dataframes = {}
@@ -14,10 +13,12 @@ def main():
             if filename.endswith('.csv'):
                 file_path = os.path.join(directory, filename)
                 try:
-                    dataframes[filename] = pd.read_csv(file_path, low_memory=False)
-                    logging.info(f"Loaded {filename} with columns: {dataframes[filename].columns.tolist()}")
+                    df = pd.read_csv(file_path, low_memory=False)
+                    df.columns = [col.strip().upper() for col in df.columns]  # Normalize column names
+                    dataframes[filename] = df
+                    logging.info(f"Loaded {filename} with columns: {df.columns.tolist()}")
                     print(f"\nDataFrame loaded from {filename}:")
-                    print(dataframes[filename].head())
+                    print(df.head())
                 except Exception as e:
                     logging.error(f"Failed to load {filename}: {e}")
         return dataframes
@@ -25,6 +26,15 @@ def main():
     def find_common_columns(df1, df2):
         """Find common columns between two DataFrames."""
         return list(set(df1.columns).intersection(set(df2.columns)))
+
+    def find_common_columns_across_all(dataframes):
+        """Find common columns across all DataFrames."""
+        common_columns = set(dataframes[next(iter(dataframes))].columns)
+        for df in dataframes.values():
+            common_columns.intersection_update(df.columns)
+            if not common_columns:
+                break
+        return list(common_columns)
 
     def coerce_column_types(df1, df2, columns):
         """Coerce column types to be the same for merging."""
@@ -42,18 +52,21 @@ def main():
         quality_issues = []
         overall_common_columns = set()
         columns_to_remove = set()
+        rows_to_remove = defaultdict(list)
 
         for key, df in dataframes.items():
             # Check for missing values
             if df.isnull().values.any():
                 logging.warning(f"{key} contains missing values.")
 
-            # Check for rows that only contain NaNs
-            if df.isna().all(axis=1).any():
-                quality_issues.append(f"{key} contains rows with all NaN values.")
+            # Check for rows that only contain NaNs (excluding the first row)
+            nan_rows = df.iloc[1:].index[df.iloc[1:].isna().all(axis=1)]
+            if not nan_rows.empty:
+                quality_issues.append(f"{key} contains rows with all NaN values: {nan_rows.tolist()}")
+                rows_to_remove[key].extend(nan_rows.tolist())
 
-            # Check for columns that only contain NaNs
-            nan_columns = df.columns[df.isna().all()]
+            # Check for columns that only contain NaNs (excluding the first row)
+            nan_columns = df.columns[df.iloc[1:].isna().all()]
             if not nan_columns.empty:
                 columns_to_remove.update(nan_columns)
                 quality_issues.append(f"{key} contains columns with all NaN values: {nan_columns.tolist()}")
@@ -73,10 +86,10 @@ def main():
         if quality_issues:
             for issue in quality_issues:
                 logging.warning(issue)
-            return False, quality_issues, columns_to_remove
+            return False, quality_issues, columns_to_remove, rows_to_remove
         else:
             logging.info("All datasets passed the quality check.")
-            return True, [], columns_to_remove
+            return True, [], columns_to_remove, rows_to_remove
 
     def rank_dataframes_by_common_columns(dataframes):
         """Rank dataframes based on the number of common columns with other dataframes."""
@@ -93,16 +106,18 @@ def main():
         ranked_dataframes = sorted(common_columns_count.items(), key=lambda item: item[1], reverse=True)
         return ranked_dataframes
 
-    def merge_dataframes(dataframes, start_key):
+    def merge_dataframes(dataframes, start_key, merge_columns=None):
         """Merge all DataFrames iteratively based on the most common columns."""
         merged_df = dataframes.pop(start_key)
         logging.info(f"Starting merge with {start_key}")
 
         while dataframes:
             best_match_key = None
-            best_common_columns = []
+            best_common_columns = merge_columns if merge_columns else []
             for key, df in dataframes.items():
                 common_columns = find_common_columns(merged_df, df)
+                if merge_columns:
+                    common_columns = merge_columns
                 if len(common_columns) > len(best_common_columns):
                     best_match_key = key
                     best_common_columns = common_columns
@@ -116,7 +131,7 @@ def main():
 
             # Perform the merge
             try:
-                merged_df = pd.merge(merged_df, dataframes.pop(best_match_key), on=best_common_columns, how='left')
+                merged_df = pd.merge(merged_df, dataframes.pop(best_match_key), on=best_common_columns, how='outer')
             except MemoryError as e:
                 logging.error(f"MemoryError during merge: {e}")
                 return None
@@ -148,22 +163,22 @@ def main():
                     logging.warning(f"Column {column} from {key} is missing in the merged dataset.")
 
     def check_nan_rows_columns(df):
-        """Check for rows and columns that only contain NaN values."""
-        # Check for rows that only contain NaNs
-        nan_rows = df[df.isna().all(axis=1)]
+        """Check for rows and columns that only contain NaN values, excluding the first row."""
+        # Check for rows that only contain NaNs, excluding the first row
+        nan_rows = df.iloc[1:][df.iloc[1:].isna().all(axis=1)]
         if not nan_rows.empty:
-            print("Rows with all NaN values:")
+            print("Rows with all NaN values (excluding the first row):")
             print(nan_rows)
         else:
-            print("No rows with all NaN values found.")
+            print("No rows with all NaN values found (excluding the first row).")
 
-        # Check for columns that only contain NaNs
-        nan_columns = df.columns[df.isna().all()]
+        # Check for columns that only contain NaNs, excluding the first row
+        nan_columns = df.columns[df.iloc[1:].isna().all()]
         if not nan_columns.empty:
-            print("Columns with all NaN values:")
+            print("Columns with all NaN values (excluding the first row):")
             print(nan_columns)
         else:
-            print("No columns with all NaN values found.")
+            print("No columns with all NaN values found (excluding the first row).")
 
     input_path = input("Please enter the input directory path: ")
 
@@ -180,32 +195,47 @@ def main():
     dataframes = load_dataframes(input_path)
 
     # Perform the quality check
-    quality_passed, issues, columns_to_remove = check_dataset_quality(dataframes)
+    quality_passed, issues, columns_to_remove, rows_to_remove = check_dataset_quality(dataframes)
     if not quality_passed:
-        # Print information about columns with all NaN values in each dataframe
-        if columns_to_remove:
-            print("The following columns contain only NaN values:")
+        # Print information about columns and rows with all NaN values in each dataframe
+        if columns_to_remove or rows_to_remove:
+            print("The following columns and rows contain only NaN values:")
             for column in columns_to_remove:
-                print(column)
-                for df_name, df in dataframes.items():
-                    if column in df.columns:
-                        print(f"{column} is present in {df_name}")
+                print(f"Column: {column}")
+            for df_name, rows in rows_to_remove.items():
+                print(f"Rows in {df_name}: {rows}")
 
-            # Prompt user to decide whether to delete columns with all NaN values
-            remove_columns = input(
-                "Would you like to delete these columns and reload the data? (yes/no): ").strip().lower()
-            if remove_columns == 'yes':
-                # Remove columns with all NaN values and reload dataframes
+            # Prompt user to decide whether to delete columns and rows with all NaN values
+            remove_nan_entries = input("Would you like to delete these columns and rows and reload the data? (yes/no): ").strip().lower()
+            if remove_nan_entries == 'yes':
+                # Remove columns and rows with all NaN values and reload dataframes
                 for df_name, df in dataframes.items():
                     df.drop(columns=[col for col in columns_to_remove if col in df.columns], inplace=True)
+                    df.drop(index=[row for row in rows_to_remove[df_name] if row in df.index], inplace=True)
                 # Save the cleaned dataframes
                 for df_name, df in dataframes.items():
                     df.to_csv(os.path.join(input_path, df_name), index=False)
                 # Reload dataframes
                 dataframes = load_dataframes(input_path)
-                quality_passed, issues, columns_to_remove = check_dataset_quality(dataframes)
+                quality_passed, issues, columns_to_remove, rows_to_remove = check_dataset_quality(dataframes)
 
     if quality_passed:
+        # Check for common columns across all DataFrames
+        common_columns = find_common_columns_across_all(dataframes)
+        if common_columns:
+            print(f"Common columns found across all DataFrames: {common_columns}")
+            merge_column_choice = input("Would you like to merge all DataFrames based on one of these common columns? (yes/no): ").strip().lower()
+            if merge_column_choice == 'yes':
+                print("\nCommon columns available for merging:")
+                for i, col in enumerate(common_columns, 1):
+                    print(f"{i}. {col}")
+                column_index = int(input("\nPlease choose the common column by entering the corresponding number: ")) - 1
+                merge_column = common_columns[column_index]
+            else:
+                merge_column = None
+        else:
+            merge_column = None
+
         # Rank dataframes by the number of common columns with other dataframes
         ranked_dataframes = rank_dataframes_by_common_columns(dataframes)
 
@@ -218,13 +248,13 @@ def main():
         start_key = ranked_dataframes[start_index][0]
 
         # Start the merging process with the selected DataFrame
-        merged_data = merge_dataframes(dataframes, start_key)
+        merged_data = merge_dataframes(dataframes, start_key, merge_columns=[merge_column] if merge_column else None)
 
         if merged_data is None:
             logging.error("Merging failed due to memory error.")
             return
 
-        # Check for rows and columns that only contain NaN values
+        # Check for rows and columns that only contain NaN values, excluding the first row
         check_nan_rows_columns(merged_data)
 
         # Verify the merge
