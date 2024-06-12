@@ -1,7 +1,7 @@
-from grobid_client.grobid_client import GrobidClient
+import os
 import xmltodict
 import json
-import os
+from grobid_client_custom import GrobidClient
 
 def process_pdfs(pdf_folder_path, tei_folder_path, json_folder_path):
     # Initialize the GROBID client
@@ -22,7 +22,7 @@ def process_pdfs(pdf_folder_path, tei_folder_path, json_folder_path):
             json_file_path = os.path.join(json_folder_path, json_filename)
 
             # Process PDF to get TEI XML
-            client.process("processFulltextDocument", pdf_path, output=tei_folder_path)
+            client.process("processFulltextDocument", pdf_path, output=tei_file_path)
 
             # Convert TEI XML to JSON
             tei_to_json(tei_file_path, json_file_path)
@@ -43,8 +43,8 @@ def tei_to_json(tei_file_path, json_file_path):
         json_file.write(json_content)
 
 # Example usage
-pdf_folder_path = 'path/to/your/pdf/folder'
-tei_folder_path = 'path/to/your/tei/folder'
-json_folder_path = 'path/to/your/json/folder'
+pdf_folder_path = '/home/max/Desktop/Hiwi_Job/RAG_database/PDF_files'
+tei_folder_path = '/home/max/Desktop/Hiwi_Job/RAG_database/TEI_files'
+json_folder_path = '/home/max/Desktop/Hiwi_Job/RAG_database/JSON_files'
 
 process_pdfs(pdf_folder_path, tei_folder_path, json_folder_path)
