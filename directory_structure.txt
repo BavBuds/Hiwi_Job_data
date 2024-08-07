@@ -1,0 +1,15 @@
+.
+├── directory_structure.txt
+├── grobid_client_custom.py
+├── Merge & associated scripts
+│   ├── BON_LTE_160524_HUE_002_merge.py
+│   ├── BON_LUH_22052024_BOE_004_merge.py
+│   ├── Merge_script_dummy.py
+│   ├── Merge_script_experimental.py
+│   └── txt_to_csv.py
+└── Scraping & embedding
+    ├── Embedding.py
+    ├── PDF_scraping.py
+    └── PDF_TEI_JSON_pipeline.py
+
+2 directories, 10 files
